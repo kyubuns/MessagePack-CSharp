@@ -17,48 +17,41 @@ namespace MessagePack.CodeGenerator
     {
         public static async Task<Compilation> GetCompilationFromProject(string csprojPath, params string[] preprocessorSymbols)
         {
-            // fucking workaround of resolve reference...
-            var externalReferences = new List<PortableExecutableReference>();
+            var parseOptions = new CSharpParseOptions(LanguageVersion.Default, DocumentationMode.Parse, SourceCodeKind.Regular, preprocessorSymbols);
+            var syntaxTrees = new List<SyntaxTree>();
+            var references = new List<MetadataReference>
             {
-                var locations = new List<string>();
-                locations.Add(typeof(object).Assembly.Location); // mscorlib
-                locations.Add(typeof(System.Linq.Enumerable).Assembly.Location); // core
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
+            };
 
-                var xElem = XElement.Load(csprojPath);
-                var ns = xElem.Name.Namespace;
-
-                var csProjRoot = Path.GetDirectoryName(csprojPath);
-                var framworkRoot = Path.GetDirectoryName(typeof(object).Assembly.Location);
-
-                foreach (var item in xElem.Descendants(ns + "Reference"))
+            foreach (var path in csprojPath.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrWhiteSpace(x)))
+            {
+                if (path.EndsWith(".cs", StringComparison.Ordinal))
                 {
-                    var hintPath = item.Element(ns + "HintPath")?.Value;
-                    if (hintPath == null)
-                    {
-                        var path = Path.Combine(framworkRoot, item.Attribute("Include").Value + ".dll");
-                        locations.Add(path);
-                    }
-                    else
-                    {
-                        locations.Add(Path.Combine(csProjRoot, hintPath));
-                    }
+                    var text = File.ReadAllText(path);
+                    syntaxTrees.Add(CSharpSyntaxTree.ParseText(text, parseOptions));
                 }
-
-                foreach (var item in locations.Distinct())
+                else if (path.EndsWith(".dll", StringComparison.Ordinal))
                 {
-                    if (File.Exists(item))
+                    references.Add(MetadataReference.CreateFromFile(path));
+                }
+                else
+                {
+                    var files = Directory.GetFiles(path, "*.cs", SearchOption.AllDirectories);
+                    foreach (var file in files)
                     {
-                        externalReferences.Add(MetadataReference.CreateFromFile(item));
+                        var text = File.ReadAllText(file);
+                        syntaxTrees.Add(CSharpSyntaxTree.ParseText(text, parseOptions));
                     }
                 }
             }
 
-            var workspace = MSBuildWorkspace.Create();
-            var project = await workspace.OpenProjectAsync(csprojPath).ConfigureAwait(false);
-            project = project.AddMetadataReferences(externalReferences); // workaround:)
-            project = project.WithParseOptions((project.ParseOptions as CSharpParseOptions).WithPreprocessorSymbols(preprocessorSymbols));
-
-            var compilation = await project.GetCompilationAsync().ConfigureAwait(false);
+            CSharpCompilation compilation = CSharpCompilation.Create(
+                "Assembly-CSharp",
+                syntaxTrees: syntaxTrees,
+                references: references
+            );
             return compilation;
         }
 
