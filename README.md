@@ -1,3 +1,35 @@
+# memo
+
+無理矢理osxでコードジェネレート出来るようにしたバージョンです。
+csprojのパースに失敗していたので、-iで渡すのをcsprojではなく直接ファイル指定するようにしています。
+
+## env
+
+```
+> msbuild -version
+Microsoft (R) Build Engine version 15.2.0.0 (xplat-2017-02/c2edfeb Thu May 18 13:58:03 EDT 2017)
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+15.2.0.0
+```
+
+## build
+
+```
+cd src/MessagePack.CodeGenerator
+msbuild . /p:Configuration=Release
+```
+
+## generate
+
+```
+mono mpc.exe -i "/Applications/Unity/Unity.app/Contents/Managed/UnityEngine.dll,Hoge.cs,Fuga.cs" -o Generated.cs
+```
+
+* -iに渡すのは、.cs, .dll, ディレクトリ。ディレクトリを指定した場合は、そのディレクトリ以下の.csファイル全部を読む。
+
+---
+
 MessagePack for C#(.NET, .NET Core, Unity, Xamarin)
 ===
 [![Join the chat at https://gitter.im/MessagePack-CSharp/Lobby](https://badges.gitter.im/MessagePack-CSharp/Lobby.svg)](https://gitter.im/MessagePack-CSharp/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Build status](https://ci.appveyor.com/api/projects/status/lb9jg3ucfcn3ypxx?svg=true)](https://ci.appveyor.com/project/neuecc/messagepack-csharp) [![Releases](https://img.shields.io/github/release/neuecc/MessagePack-CSharp.svg)](https://github.com/neuecc/MessagePack-CSharp/releases)
